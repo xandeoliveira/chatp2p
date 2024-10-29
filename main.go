@@ -1,17 +1,29 @@
 package main
 
-import (
-	"fmt"
-	cipher "packages/caesarcipher"
-)
+// func receive(w webview.WebView, message string) {
+// 	w.Eval(fmt.Sprintf("postUserMessage('%s')", message))
+// }
+
+// func send(message string) string {
+// 	return message
+// }
 
 func main() {
-	var k byte = 2
-	message := "Alexandre"
+	// INTERFACE GRÁFICA
+	// path, err := filepath.Abs("layout/index.html")
+	// if err != nil {
+	// 	os.Exit(1)
+	// }
+	// path = "file://" + path
 
-	encrypted := cipher.Encoding(message, k)
-	dencrypted := cipher.Decoding(encrypted, k)
+	// w := webview.New(true)
+	// defer w.Destroy()
 
-	fmt.Println(encrypted)
-	fmt.Println(dencrypted)
+	// w.SetTitle("Chat Unilab")
+	// w.SetSize(800, 500, 0)
+	// w.Navigate(path)
+
+	// w.Bind("send", send)
+
+	// w.Run()
 }
