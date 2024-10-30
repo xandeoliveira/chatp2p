@@ -1,6 +1,6 @@
 const inputElement = document.querySelector(".input-box input")
 const chatContainer = document.querySelector("main.chat-box")
-console.log(chatContainer)
+const inputIp = document.querySelector("header input")
 
 const createMessage = (text, userName) => {
   const strong = document.createElement("strong")
@@ -55,4 +55,9 @@ const sendMessage = () => {
     postMyMessage(myMessage)
     scrollChat()
   })
+}
+
+const loadIp = () => {
+  ip = inputIp.value.trim()
+  getIp(ip)
 }

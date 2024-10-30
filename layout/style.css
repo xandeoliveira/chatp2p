@@ -26,20 +26,18 @@ body {
 
 header, footer{
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   background-color: #d3c0a1;
   width: 100vw;
-  height: 10vh;
-}
-
-footer {
   height: 15vh;
 }
 
 h1 {
   font-size: 32px;
   color: #3C3228;
+  margin-bottom: 15px;
 }
 
 .chat-box {
@@ -102,6 +100,18 @@ h1 {
 .input-box button:hover {
   background-color: #a98965;
   color: #ffffff;
+}
+
+.ip {
+  width: 50vw;
+}
+.ip input {
+  height: 30px;
+  padding: 5px;
+}
+.ip button{
+  height: 30px;
+  padding: 5px 15px;
 }
 
 @media (max-width: 500px) {
