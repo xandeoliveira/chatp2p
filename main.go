@@ -23,16 +23,16 @@ func main() {
 	defer w.Destroy()
 
 	w.SetTitle("Chat Unilab")
-	w.SetSize(800, 500, 0)
+	w.SetSize(800, 600, 0)
 	w.Navigate(path)
+
+	w.Run()
 
 	w.Bind("getIp", func(ip string) {
 		go client(w, ip)
 	})
 
 	server(w)
-
-	w.Run()
 }
 
 func server(w webview.WebView) {
@@ -81,12 +81,14 @@ func client(w webview.WebView, ip string) {
 		log.Fatal(err)
 	}
 
-	w.Bind("send", func(msg string) {
+	w.Bind("send", func(msg string) string {
 		_, err = conn.Write([]byte(msg))
 
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		return msg
 	})
 
 }
