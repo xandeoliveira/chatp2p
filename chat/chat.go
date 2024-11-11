@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-
-	webview "github.com/webview/webview_go"
 )
 
-func server(w webview.WebView, porta string) {
+func server(porta string) {
 	server, err := net.Listen("tcp", porta)
 	if err != nil {
 		log.Fatal(err)
@@ -21,11 +19,11 @@ func server(w webview.WebView, porta string) {
 			log.Fatal(err)
 		}
 
-		go read(w, conn)
+		go read(conn)
 	}
 }
 
-func read(w webview.WebView, conn net.Conn) {
+func read(conn net.Conn) {
 	for {
 		var buffer = make([]byte, 256)
 		nbytes, err := conn.Read(buffer)
@@ -37,14 +35,14 @@ func read(w webview.WebView, conn net.Conn) {
 		if nbytes > 0 {
 			// Nesta parte devo colocar a mensagem com js
 			// fmt.Println(conn.RemoteAddr().String() + ">=< : " + string(buffer))
-			w.Eval(fmt.Sprintf("postUserMessage('%s')", string(buffer)))
+			fmt.Printf("postUserMessage('%s')", string(buffer))
 		}
 
 	}
 }
 
-func client(w webview.WebView, ip string, porta string) {
-	conn, err := net.Dial("tcp", ip+porta)
+func client(ip string) net.Conn {
+	conn, err := net.Dial("tcp", ip+":9000")
 
 	if err != nil {
 		log.Fatal(err)
@@ -54,16 +52,5 @@ func client(w webview.WebView, ip string, porta string) {
 		log.Fatal(err)
 	}
 
-	w.Bind("send", func(msg string) string {
-		_, err = conn.Write([]byte(msg))
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		w.Eval(fmt.Sprintf("postMyMessage('%s')", msg))
-
-		return msg
-	})
-
+	return conn
 }

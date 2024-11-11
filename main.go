@@ -1,30 +1,213 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
+	"fmt"
+	"log"
+	"net"
 
-	webview "github.com/webview/webview_go"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/widget"
 )
 
+const porta = ":9000"
+
+var username string
+var ipDestination string
+var conn net.Conn
+
 func main() {
-	path, err := filepath.Abs("layout/index.html")
+	a := app.New()
+	// Criando as páginas
+	welcome := a.NewWindow("Bem vindo!")
+	destination := a.NewWindow("Destino")
+	wchat := a.NewWindow("Chat Unilab")
+
+	// Widgets das páginas
+	title := widget.NewLabelWithStyle("BEM VINDO AO CHAT UNILAB!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	nameEntry := widget.NewEntry()
+	nameEntry.SetPlaceHolder("Digite seu nome aqui")
+
+	destinationTitle := widget.NewLabelWithStyle("Iniciar chat.", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	ipEntry := widget.NewEntry()
+	ipEntry.SetPlaceHolder("Digite o ip de destino aqui")
+
+	messagesContainer := container.New(layout.NewVBoxLayout())
+	messageEntry := widget.NewEntry()
+	messageEntry.SetPlaceHolder("Mensagem")
+
+	// Window Welcome
+	welcomeContainer := container.New(
+		layout.NewVBoxLayout(),
+		layout.NewSpacer(),
+
+		container.New(
+			layout.NewVBoxLayout(),
+			title,
+			nameEntry,
+			widget.NewButton("Confirmar", func() {
+				username = nameEntry.Text
+
+				destination.Show()
+				welcome.Hide()
+			}),
+		),
+
+		layout.NewSpacer(),
+	)
+
+	// Window Destination
+	destinationContainer := container.New(
+		layout.NewVBoxLayout(),
+		layout.NewSpacer(),
+
+		container.New(
+			layout.NewVBoxLayout(),
+			destinationTitle,
+			ipEntry,
+			widget.NewButton("Confirmar", func() {
+				ipDestination = ipEntry.Text
+
+				go client(getIp())
+				go server(messagesContainer)
+
+				wchat.Show()
+				destination.Hide()
+			}),
+		),
+
+		layout.NewSpacer(),
+	)
+
+	// Window Chat
+	formContainer := container.New(
+		layout.NewHBoxLayout(),
+
+		container.New(layout.NewGridWrapLayout(fyne.NewSize(500, messageEntry.MinSize().Height)), messageEntry),
+
+		widget.NewButton("Enviar", func() {
+			message := container.New(
+				layout.NewHBoxLayout(),
+
+				widget.NewLabelWithStyle(fmt.Sprintf("%s:", getUsername()), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+				widget.NewLabel(messageEntry.Text),
+			)
+
+			_, err := conn.Write([]byte(messageEntry.Text))
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			messagesContainer.Add(message)
+			messageEntry.SetText("")
+		}),
+	)
+
+	chatContainer := container.New(
+		layout.NewVBoxLayout(),
+
+		container.New(
+			layout.NewVBoxLayout(),
+
+			container.New(
+				layout.NewGridWrapLayout(fyne.NewSize(500, 500-(messageEntry.MinSize().Height))),
+				messagesContainer,
+			),
+
+			layout.NewSpacer(),
+
+			formContainer,
+		),
+	)
+
+	// Configurando tamanhos das páginas
+	welcome.SetContent(welcomeContainer)
+	welcome.Resize(fyne.NewSize(500, 400))
+
+	destination.SetContent(destinationContainer)
+	destination.Resize(fyne.NewSize(500, 400))
+
+	wchat.SetContent(chatContainer)
+	wchat.Resize(fyne.NewSize(500, 500))
+
+	// Iniciando a interface
+	welcome.ShowAndRun()
+}
+
+func getUsername() string {
+	return username
+}
+
+func getIp() string {
+	return ipDestination
+}
+
+func server(c *fyne.Container) {
+	server, err := net.Listen("tcp", porta)
 	if err != nil {
-		os.Exit(1)
+		log.Fatal(err)
 	}
-	path = "file://" + path
 
-	w := webview.New(true)
-	defer w.Destroy()
+	fmt.Println("Servidor: " + GetOutboundIp().String())
 
-	w.SetTitle("Chat Unilab")
-	w.SetSize(800, 600, 0)
-	w.Navigate(path)
+	for {
+		conn, err := server.Accept()
 
-	w.Bind("send", func(message string) string {
-		// w.Eval(fmt.Sprintf("postMyMessage('%s')", message))
-		return message
-	})
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	w.Run()
+		go read(conn, c)
+	}
+}
+
+func read(conn net.Conn, c *fyne.Container) {
+	for {
+		var buffer = make([]byte, 256)
+		nbytes, err := conn.Read(buffer)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if nbytes > 0 {
+			message := container.New(
+				layout.NewHBoxLayout(),
+
+				widget.NewLabelWithStyle(fmt.Sprintf("%s:", conn.RemoteAddr().String()), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+				widget.NewLabel(string(buffer)),
+			)
+
+			c.Add(message)
+		}
+
+	}
+}
+
+func client(ip string) {
+	fmt.Println("Concetando: " + ip + porta)
+	connection, err := net.Dial("tcp", ip+porta)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	conn = connection
+}
+
+func GetOutboundIp() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer conn.Close()
+
+	localAdd := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAdd.IP
 }
