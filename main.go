@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 
+	"chatunilab/cipher"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -14,9 +16,11 @@ import (
 
 const porta = ":9000"
 
+var k byte = 6
 var username string
 var ipDestination string
-var conn net.Conn
+
+var messagesContainer = container.New(layout.NewVBoxLayout())
 
 func main() {
 	a := app.New()
@@ -33,10 +37,6 @@ func main() {
 	destinationTitle := widget.NewLabelWithStyle("Iniciar chat.", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	ipEntry := widget.NewEntry()
 	ipEntry.SetPlaceHolder("Digite o ip de destino aqui")
-
-	messagesContainer := container.New(layout.NewVBoxLayout())
-	messageEntry := widget.NewEntry()
-	messageEntry.SetPlaceHolder("Mensagem")
 
 	// Window Welcome
 	welcomeContainer := container.New(
@@ -70,11 +70,11 @@ func main() {
 			widget.NewButton("Confirmar", func() {
 				ipDestination = ipEntry.Text
 
-				go client(getIp())
-				go server(messagesContainer)
-
-				wchat.Show()
 				destination.Hide()
+				wchat.Show()
+
+				go client(getIp(), wchat)
+				server()
 			}),
 		),
 
@@ -82,6 +82,79 @@ func main() {
 	)
 
 	// Window Chat
+
+	// Configurando tamanhos das páginas
+	welcome.SetContent(welcomeContainer)
+	welcome.Resize(fyne.NewSize(500, 400))
+
+	destination.SetContent(destinationContainer)
+	destination.Resize(fyne.NewSize(500, 400))
+
+	// Iniciando a interface
+	welcome.ShowAndRun()
+}
+
+func getUsername() string {
+	return username
+}
+
+func getIp() string {
+	return ipDestination
+}
+
+func server() {
+	server, err := net.Listen("tcp", porta)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Servidor: " + GetOutboundIp().String())
+
+	for {
+		conn, err := server.Accept()
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		go read(conn)
+	}
+}
+
+func read(conn net.Conn) {
+	for {
+		var buffer = make([]byte, 256)
+		nbytes, err := conn.Read(buffer)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if nbytes > 0 {
+			message := container.New(
+				layout.NewHBoxLayout(),
+
+				widget.NewLabelWithStyle(fmt.Sprintf("%s:", conn.RemoteAddr().String()), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+				widget.NewLabel(cipher.Decoding(string(buffer), k)),
+			)
+
+			messagesContainer.Add(message)
+		}
+
+	}
+}
+
+func client(ip string, wchat fyne.Window) {
+	fmt.Println("Concetando: " + ip + porta)
+	conn, err := net.Dial("tcp", ip+porta)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	messageEntry := widget.NewEntry()
+	messageEntry.SetPlaceHolder("Mensagem")
+
 	formContainer := container.New(
 		layout.NewHBoxLayout(),
 
@@ -95,7 +168,7 @@ func main() {
 				widget.NewLabel(messageEntry.Text),
 			)
 
-			_, err := conn.Write([]byte(messageEntry.Text))
+			_, err := conn.Write([]byte(cipher.Encoding(messageEntry.Text, k)))
 
 			if err != nil {
 				log.Fatal(err)
@@ -123,79 +196,9 @@ func main() {
 		),
 	)
 
-	// Configurando tamanhos das páginas
-	welcome.SetContent(welcomeContainer)
-	welcome.Resize(fyne.NewSize(500, 400))
-
-	destination.SetContent(destinationContainer)
-	destination.Resize(fyne.NewSize(500, 400))
-
 	wchat.SetContent(chatContainer)
 	wchat.Resize(fyne.NewSize(500, 500))
 
-	// Iniciando a interface
-	welcome.ShowAndRun()
-}
-
-func getUsername() string {
-	return username
-}
-
-func getIp() string {
-	return ipDestination
-}
-
-func server(c *fyne.Container) {
-	server, err := net.Listen("tcp", porta)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Servidor: " + GetOutboundIp().String())
-
-	for {
-		conn, err := server.Accept()
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		go read(conn, c)
-	}
-}
-
-func read(conn net.Conn, c *fyne.Container) {
-	for {
-		var buffer = make([]byte, 256)
-		nbytes, err := conn.Read(buffer)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if nbytes > 0 {
-			message := container.New(
-				layout.NewHBoxLayout(),
-
-				widget.NewLabelWithStyle(fmt.Sprintf("%s:", conn.RemoteAddr().String()), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-				widget.NewLabel(string(buffer)),
-			)
-
-			c.Add(message)
-		}
-
-	}
-}
-
-func client(ip string) {
-	fmt.Println("Concetando: " + ip + porta)
-	connection, err := net.Dial("tcp", ip+porta)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	conn = connection
 }
 
 func GetOutboundIp() net.IP {
