@@ -28,6 +28,7 @@ func main() {
 	welcome := a.NewWindow("Bem vindo!")
 	destination := a.NewWindow("Destino")
 	wchat := a.NewWindow("Chat Unilab")
+	go server()
 
 	// Widgets das páginas
 	title := widget.NewLabelWithStyle("BEM VINDO AO CHAT UNILAB!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
@@ -73,8 +74,7 @@ func main() {
 				destination.Hide()
 				wchat.Show()
 
-				go client(getIp(), wchat)
-				server()
+				client(getIp(), wchat)
 			}),
 		),
 
