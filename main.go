@@ -16,7 +16,7 @@ import (
 
 const porta = ":9000"
 
-var k byte = 6
+var k int = 6
 var username string
 var ipDestination string
 
